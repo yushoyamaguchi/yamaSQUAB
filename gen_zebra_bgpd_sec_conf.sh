@@ -6,9 +6,9 @@
 # INTRA_ROUTER_ADDRESS[es] is ONE string!! (Ex.: "192.168.10.2 192.168.10.3")
 #
 
-ZEBRA_CONF_FILE="/NIST-BGP-SRx-master/local-6.1.4/etc/zebra.conf"
-BGPD_CONF_FILE="/NIST-BGP-SRx-master/local-6.1.4/etc/bgpd.conf"
-SRX_SERVER_CONF_FILE="/NIST-BGP-SRx-master/local-6.1.4/etc/srx_server.conf"
+ZEBRA_CONF_FILE="/NIST-BGP-SRx-master/local-6.2.0/etc/zebra.conf"
+BGPD_CONF_FILE="/NIST-BGP-SRx-master/local-6.2.0/etc/bgpd.conf"
+SRX_SERVER_CONF_FILE="/NIST-BGP-SRx-master/local-6.2.0/etc/srx_server.conf"
 
 INTERFACE=($(echo $(ip addr | grep inet | grep eth | cut -f 11 -d' ' | tr '\n' ' ')))
 IP_ADDR=($(echo $(ip addr | grep inet | grep eth | cut -f 6 -d' ' | tr '\n' ' ')))

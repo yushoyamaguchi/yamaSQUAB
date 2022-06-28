@@ -10,6 +10,7 @@ import yaml
 import subprocess
 from random import randint
 import ipaddress
+import time
 
 class AS_generator:
   def __init__(self, number, image, rand_gen):
@@ -331,15 +332,15 @@ for as_gen in as_generator_dict.values():
   routers_list.extend(as_gen.get_router_dict().values())
 
 for rou_gen in routers_list:
-  rou_gen.set_peer_address(peer_network_ip_dict[project_name + "-" + rou_gen.get_router_name() + "-1"])
-  rou_gen.set_peer_address_opposite(peer_network_ip_dict[project_name + "-" + rou_gen.get_opposite_router_name() + "-1"])
+  rou_gen.set_peer_address(peer_network_ip_dict[project_name + "_" + rou_gen.get_router_name() + "_1"])
+  rou_gen.set_peer_address_opposite(peer_network_ip_dict[project_name + "_" + rou_gen.get_opposite_router_name() + "_1"])
 
 # collecting RPKI IP address
 cmd = "docker network inspect " + project_name + "_rnet"
 ret_val = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
 rnet_info = yaml.safe_load(ret_val.stdout)
 for con in rnet_info[0]["Containers"].values():
-  if con["Name"] == project_name + "-rpki-1":
+  if con["Name"] == project_name + "_rpki_1":
     rpki_generator.set_rpki_address(con["IPv4Address"].split("/")[0])
     break
 print("Assigned RPKI IP address")
@@ -347,7 +348,7 @@ print(rpki_generator.get_rpki_address())
 
 for rou_gen in routers_list:
   rou_gen.set_as_network_address(as_network_ip_dict[project_name + "_" + rou_gen.get_as_network_name()])
-  rou_gen.set_intra_as_address(intra_as_ip_dict[project_name + "-" + rou_gen.get_router_name() + "-1"])
+  rou_gen.set_intra_as_address(intra_as_ip_dict[project_name + "_" + rou_gen.get_router_name() + "_1"])
 
 print("Making config file in container...")
 quagga_list = []
@@ -360,7 +361,7 @@ for as_gen in as_generator_dict.values():
 
 router_index = 1 # bgp router-id を一意に振るために利用
 for quagga in quagga_list:
-  rouname = project_name + "-" + quagga.get_router_name() + "-1"
+  rouname = project_name + "_" + quagga.get_router_name() + "_1"
   if len(as_generator_dict[quagga.get_on_as_num()].get_router_address_list()) == 1: # There is one router in the AS.
     neighbor_intra_router_address = ""
   else: # There is some routers in the AS.
@@ -370,38 +371,39 @@ for quagga in quagga_list:
   subprocess.call(["docker", "exec", "-d", rouname, "/home/gen_zebra_bgpd_conf.sh", str(router_index), str(quagga.get_on_as_num()), quagga.get_as_network_address(), str(quagga.get_for_as_num()), quagga.get_peer_address_opposite(), neighbor_intra_router_address, str(quagga.get_local_preference())])
   router_index += 1
 
-subprocess.call(["docker", "exec", "-d", project_name + "-rpki-1", "mkdir", "/home/cert"]) # for srx ruoter certificate
+subprocess.call(["docker", "exec", "-d", project_name + "_rpki_1", "mkdir", "/home/cert"]) # for srx ruoter certificate
 for srx in srx_list:
-  rouname = project_name + "-" + srx.get_router_name() + "-1"
+  rouname = project_name + "_" + srx.get_router_name() + "_1"
   if len(as_generator_dict[srx.get_on_as_num()].get_router_address_list()) == 1: # There is one router in the AS.
     neighbor_intra_router_address = ""
   else: # There is some routers in the AS.
     neighbor_intra_router_address = as_generator_dict[srx.get_on_as_num()].get_router_address_list()
     neighbor_intra_router_address.remove(srx.get_intra_as_address())
-    neighbor_intra_router_address = ' '.join(neighbor_intra_router_address)
+    neighbor_intra_router_address = ' '.join(neighbor_intra_router_address) 
   subprocess.call(["docker", "exec", "-d", rouname, "/home/cert_setting.sh", rouname, str(srx.get_on_as_num())])
+  time.sleep(0.1)
   subprocess.call(["docker", "cp", rouname + ":/var/lib/bgpsec-keys/" + rouname + ".cert", "/tmp"])
-  subprocess.call(["docker", "cp", "/tmp/" + rouname + ".cert", project_name + "-rpki-1:/home/cert/"])
+  subprocess.call(["docker", "cp", "/tmp/" + rouname + ".cert", project_name + "_rpki_1:/home/cert/"])
   subprocess.call(["docker", "exec", "-d", rouname, "/home/gen_zebra_bgpd_sec_conf.sh", str(router_index), str(srx.get_on_as_num()), srx.get_as_network_address(), rpki_generator.get_rpki_address(), str(srx.get_for_as_num()), str(srx.get_peer_address_opposite()), rouname, neighbor_intra_router_address, str(srx.get_local_preference())])
   router_index += 1
 
 print("Starting daemons...")
 
 for quagga in quagga_list:
-  rouname = project_name + "-" + quagga.get_router_name() + "-1"
+  rouname = project_name + "_" + quagga.get_router_name() + "_1"
   subprocess.call(["docker", "exec", "-d", rouname, "/home/set_tcpdump.sh", rouname])
 
 for srx in srx_list:
-  rouname = project_name + "-" + srx.get_router_name() + "-1"
+  rouname = project_name + "_" + srx.get_router_name() + "_1"
   subprocess.call(["docker", "exec", "-d", rouname, "/home/set_tcpdump.sh", rouname])
 
 for quagga in quagga_list:
-  rouname = project_name + "-" + quagga.get_router_name() + "-1"
+  rouname = project_name + "_" + quagga.get_router_name() + "_1"
   subprocess.call(["docker", "exec", "-d", "--privileged", rouname, "zebra"])
   subprocess.call(["docker", "exec", "-d", "--privileged", rouname, "bgpd"])
 
 for srx in srx_list:
-  rouname = project_name + "-" + srx.get_router_name() + "-1"
+  rouname = project_name + "_" + srx.get_router_name() + "_1"
   subprocess.call(["docker", "exec", "-d", "--privileged", rouname, "srx_server"])
   subprocess.call(["docker", "exec", "-d", "--privileged", rouname, "zebra"])
   subprocess.call(["docker", "exec", "-d", "--privileged", rouname, "bgpd"])

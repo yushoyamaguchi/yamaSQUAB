@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  router_53_for_83:
+    image: srx
+    networks:
+      as_net_53: {}
+      pnet_53and83: {}
+      rnet: {}
+    tty: true
+  router_83_for_53:
+    image: srx
+    networks:
+      as_net_83: {}
+      pnet_53and83: {}
+      rnet: {}
+    tty: true
+  rpki:
+    image: srx
+    networks:
+      rnet: {}
+    tty: true
+
+networks:
+  as_net_53:
+    ipam:
+      config:
+      - subnet: 172.22.47.0/24
+  as_net_83:
+    ipam:
+      config:
+      - subnet: 172.29.36.0/24
+  pnet_53and83:
+    ipam:
+      config:
+      - subnet: 172.26.139.0/24
+  rnet: {}
+

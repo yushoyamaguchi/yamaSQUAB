@@ -1,0 +1,7 @@
+AS_Setting:
+  53:
+    image: srx
+  83:
+    image: srx
+Peer_info:
+  - [53, 83]
